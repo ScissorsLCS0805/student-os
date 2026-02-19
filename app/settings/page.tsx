@@ -16,6 +16,11 @@ import { useRouter } from "next/navigation";
 export default function SettingsPage() {
   const router = useRouter();
 
+  // --- 管理員驗證狀態 ---
+  const [isAdminVerified, setIsAdminVerified] = useState(false);
+  const [adminInput, setAdminInput] = useState("");
+  const [adminError, setAdminError] = useState("");
+
   const [fontScale, setFontScale] = useState<number>(1);
   const [oldPass, setOldPass] = useState("");
   const [newPass, setNewPass] = useState("");
@@ -28,6 +33,16 @@ export default function SettingsPage() {
     setFontScale(settings.fontScale || 1);
     setIcsText((settings.icsUrls || []).join("\n"));
   }, []);
+
+  // --- 驗證管理員密碼 ---
+  function verifyAdmin() {
+    if (adminInput === "admin") {
+      setIsAdminVerified(true);
+      setAdminError("");
+    } else {
+      setAdminError("管理員密碼錯誤，請再試一次。");
+    }
+  }
 
   function applyFont(scale: number) {
     const s = Math.max(0.85, Math.min(1.25, scale));
@@ -76,6 +91,38 @@ export default function SettingsPage() {
     setTimeout(() => setMsg(""), 1500);
   }
 
+  // --- 如果尚未驗證，顯示管理員登入界面 ---
+  if (!isAdminVerified) {
+    return (
+      <div className="page">
+        <PageTopBar title="🔒 管理員驗證" subtitle="進入設定頁面需要輸入管理員密碼。" />
+        <div className="container" style={{ display: "flex", justifyContent: "center", paddingTop: "50px" }}>
+          <div className="card" style={{ maxWidth: "400px", width: "100%" }}>
+            <div className="cardHeader">
+              <h2 className="cardTitle">請輸入管理員密碼</h2>
+            </div>
+            <div className="field">
+              <input
+                className="input"
+                type="password"
+                placeholder="管理員密碼"
+                value={adminInput}
+                onChange={(e) => setAdminInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && verifyAdmin()}
+              />
+            </div>
+            {adminError && <div className="small" style={{ color: "red", marginTop: "10px" }}>{adminError}</div>}
+            <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+              <button className="btn btnPrimary" style={{ flex: 1 }} onClick={verifyAdmin}>驗證</button>
+              <button className="btn" style={{ flex: 1 }} onClick={() => router.back()}>返回</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 驗證通過後顯示原本的設定內容 ---
   return (
     <div className="page">
       <PageTopBar title="⚙ Settings" subtitle="修改密碼、調整字體大小、iCal 匯入（Google 行事曆）。" />

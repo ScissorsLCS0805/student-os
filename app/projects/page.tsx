@@ -18,6 +18,7 @@ export default function ProjectsPage() {
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState<string>(COURSES[0]);
   const [due, setDue] = useState("");
+  const [dueTime, setDueTime] = useState("23:59"); // 新增：截止時間狀態
   const [note, setNote] = useState("");
 
   // 子任務暫存狀態
@@ -31,7 +32,7 @@ export default function ProjectsPage() {
   function persist(next: ProjectItem[]) {
     const updated = next.map(proj => {
       const tasks = proj.tasks || [];
-      if (tasks.length === 0) return { ...proj, progress: 0 };
+      if (tasks.length === 0) return { ...proj, progress: proj.progress || 0 };
       const doneCount = tasks.filter(t => t.done).length;
       return { ...proj, progress: Math.round((doneCount / tasks.length) * 100) };
     });
@@ -48,13 +49,14 @@ export default function ProjectsPage() {
         course: course,
         due: due.trim() || undefined,
         progress: 0,
-        note: note.trim() || undefined,
+        // 將截止時間整合進備註欄位以便顯示
+        note: `截止時間：${dueTime}${note.trim() ? " | " + note.trim() : ""}`,
         tasks: [],
       },
       ...items,
     ];
     persist(next);
-    setTitle(""); setDue(""); setNote("");
+    setTitle(""); setDue(""); setDueTime("23:59"); setNote("");
   }
 
   function removeProject(id: string) {
@@ -144,6 +146,11 @@ export default function ProjectsPage() {
               </div>
 
               <div className="field">
+                <div className="label">截止時間</div>
+                <input className="input" type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
+              </div>
+
+              <div className="field" style={{ gridColumn: "1 / -1" }}>
                 <div className="label">備註</div>
                 <input className="input" placeholder="小組組員、繳交方式..." value={note} onChange={(e) => setNote(e.target.value)} />
               </div>

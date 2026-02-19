@@ -38,6 +38,7 @@ export default function AssignmentsPage() {
   const [course, setCourse] = useState<string>(COURSES[0]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [dueTime, setDueTime] = useState("23:59"); // 新增：截止時間狀態
   const [progress, setProgress] = useState<number>(0);
   const [note, setNote] = useState("");
 
@@ -46,6 +47,7 @@ export default function AssignmentsPage() {
   const [eCourse, setECourse] = useState<string>(COURSES[0]);
   const [eTitle, setETitle] = useState("");
   const [eDue, setEDue] = useState("");
+  const [eDueTime, setEDueTime] = useState("23:59"); // 新增：編輯截止時間狀態
   const [eProgress, setEProgress] = useState<number>(0);
   const [eNote, setENote] = useState("");
 
@@ -69,7 +71,8 @@ export default function AssignmentsPage() {
         title: t,
         due: due.trim() || undefined,
         progress: clampProgress(Number(progress)),
-        note: note.trim() || undefined,
+        // 將截止時間整合進備註欄位以便顯示
+        note: `截止時間：${dueTime}${note.trim() ? " | " + note.trim() : ""}`,
       },
       ...items,
     ];
@@ -77,6 +80,7 @@ export default function AssignmentsPage() {
     persist(next);
     setTitle("");
     setDue("");
+    setDueTime("23:59");
     setProgress(0);
     setNote("");
   }
@@ -91,8 +95,18 @@ export default function AssignmentsPage() {
     setECourse(x.course || COURSES[0]);
     setETitle(x.title);
     setEDue(x.due || "");
+    
+    // 解析原本存放在 note 中的時間資訊 (如有)
+    const timeMatch = x.note?.match(/截止時間：(\d{2}:\d{2})/);
+    if (timeMatch) {
+        setEDueTime(timeMatch[1]);
+        setENote(x.note?.split(" | ")[1] || "");
+    } else {
+        setEDueTime("23:59");
+        setENote(x.note || "");
+    }
+    
     setEProgress(x.progress || 0);
-    setENote(x.note || "");
   }
 
   function cancelEdit() {
@@ -113,7 +127,7 @@ export default function AssignmentsPage() {
               title: t,
               due: eDue.trim() || undefined,
               progress: clampProgress(Number(eProgress)),
-              note: eNote.trim() || undefined,
+              note: `截止時間：${eDueTime}${eNote.trim() ? " | " + eNote.trim() : ""}`,
             }
           : x
       )
@@ -164,19 +178,24 @@ export default function AssignmentsPage() {
               </div>
 
               <div className="field">
+                <div className="label">截止時間</div>
+                <input className="input" type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
+              </div>
+
+              <div className="field">
                 <div className="label">完成進度（0~100）</div>
                 <input className="input" type="number" min={0} max={100} value={progress} onChange={(e) => setProgress(Number(e.target.value))} />
               </div>
 
               <div className="field" style={{ gridColumn: "1 / -1" }}>
-                <div className="label">備註（可空）</div>
+                <div className="label">其他備註（可空）</div>
                 <input className="input" placeholder="例如：需要先整理 10 篇摘要" value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
             </div>
 
             <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
               <button className="btn btnPrimary" onClick={add}>＋ 新增</button>
-              <button className="btn" onClick={() => { setTitle(""); setDue(""); setProgress(0); setNote(""); }}>清空</button>
+              <button className="btn" onClick={() => { setTitle(""); setDue(""); setDueTime("23:59"); setProgress(0); setNote(""); }}>清空</button>
             </div>
           </div>
 
@@ -207,7 +226,7 @@ export default function AssignmentsPage() {
                                 {x.course ? `【${x.course}】` : ""} {x.title}
                               </div>
                               <div className="small">
-                                {x.due ? `截止：${x.due}` : "截止：未填"} {x.note ? `｜備註：${x.note}` : ""}
+                                {x.due ? `截止：${x.due}` : "截止：未填"} {x.note ? `｜${x.note}` : ""}
                               </div>
                             </div>
 
@@ -244,12 +263,17 @@ export default function AssignmentsPage() {
                             </div>
 
                             <div className="field">
+                              <div className="label">截止時間</div>
+                              <input className="input" type="time" value={eDueTime} onChange={(e) => setEDueTime(e.target.value)} />
+                            </div>
+
+                            <div className="field">
                               <div className="label">進度</div>
                               <input className="input" type="number" min={0} max={100} value={eProgress} onChange={(e) => setEProgress(Number(e.target.value))} />
                             </div>
 
                             <div className="field" style={{ gridColumn: "1 / -1" }}>
-                              <div className="label">備註</div>
+                              <div className="label">其他備註</div>
                               <input className="input" value={eNote} onChange={(e) => setENote(e.target.value)} />
                             </div>
                           </div>

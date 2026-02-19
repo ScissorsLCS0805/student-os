@@ -413,3 +413,43 @@ body {
   0% { width: 0%; }
   100% { width: 100%; }
 }
+
+/* --- 管理員禁區特有樣式 --- */
+.adminOverlay {
+  background: #020617 !important; /* 變成超深色背景 */
+  transition: background 0.5s ease;
+}
+
+.adminCard {
+  border: 2px solid #334155;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.adminInput:focus {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3) !important;
+  border-color: #ef4444 !important;
+}
+
+/* 密碼錯誤時的震動動畫 */
+.shake {
+  animation: shakeAnim 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shakeAnim {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+.adminErrorMessage {
+  color: #f87171;
+  background: rgba(220, 38, 38, 0.1);
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 15px;
+  font-weight: 700;
+  font-size: 13px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  animation: fadeIn 0.3s ease;
+}

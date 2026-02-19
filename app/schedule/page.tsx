@@ -219,12 +219,11 @@ export default function SchedulePage() {
     const existing = loadJSON<ScheduleItem[]>(KEYS.schedule, []);
     let needsSave = false;
 
-    // 1. 檢查是否有完全缺失的預設課程，並修正 TypeScript 型別報錯
+    // 1. 檢查是否有完全缺失的預設課程
     const updated = [...existing];
     INITIAL_COURSES_DETAIL.forEach(ic => {
       const idx = updated.findIndex(e => e.title === ic.title);
       if (idx === -1) {
-        // 缺失：直接新增，將 uid 置於解構之後確保不被覆蓋
         const newCourse: ScheduleItem = {
           ...(ic as ScheduleItem),
           id: uid("cls"),
@@ -232,7 +231,6 @@ export default function SchedulePage() {
         updated.push(newCourse);
         needsSave = true;
       } else if (!updated[idx].courseCode || !updated[idx].members) {
-        // 存在但缺失詳細資訊：覆蓋更新但保留原始 ID
         updated[idx] = { 
           ...updated[idx], 
           ...(ic as ScheduleItem),
@@ -268,6 +266,7 @@ export default function SchedulePage() {
     setItems(next);
     saveJSON(KEYS.schedule, next);
     setTitle(""); setLocation("");
+    setStart("09:10"); setEnd("12:00");
   }
 
   function remove(id: string) {
@@ -336,6 +335,14 @@ export default function SchedulePage() {
               <select className="select" value={weekday} onChange={e => setWeekday(Number(e.target.value))}>
                 {WEEK.map(w => <option key={w.n} value={w.n}>{w.name}</option>)}
               </select>
+            </div>
+            <div className="field">
+              <div className="label">上課時間 (開始)</div>
+              <input className="input" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+            </div>
+            <div className="field">
+              <div className="label">上課時間 (結束)</div>
+              <input className="input" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
             <div className="field">
               <div className="label">地點</div>

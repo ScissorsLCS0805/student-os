@@ -17,7 +17,7 @@ import {
   daysUntil,
 } from "@/lib/storage";
 
-// --- 學期時間設定 (用於過濾今日課表) ---
+// --- 學期時間設定 ---
 const SEM_START_STR = "2026-02-23";
 const SEM_END_STR = "2026-06-26";
 
@@ -57,13 +57,26 @@ export default function DashboardClient() {
   const [now, setNow] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
   const [mounted, setMounted] = useState(false);
-  
-  // 新增：控制側邊欄收合狀態
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // --- 新聞相關狀態 ---
+  const [news, setNews] = useState<string>("正在同步今日股市資訊...");
 
   useEffect(() => {
     setMounted(true);
     const timer = setInterval(() => setNow(new Date()), 1000);
+
+    // 抓取 Yahoo 股市 RSS
+    fetch("https://api.rss2json.com/v1/api.json?rss_url=https://tw.stock.yahoo.com/rss?category=news")
+      .then(res => res.json())
+      .then(data => {
+        if (data.items && data.items.length > 0) {
+          const titles = data.items.slice(0, 10).map((item: any) => item.title).join(" ｜ ");
+          setNews(`【Yahoo股市焦點】${titles}`);
+        }
+      })
+      .catch(() => setNews("目前暫時無法連接股市新聞中心。"));
+
     return () => clearInterval(timer);
   }, []);
 
@@ -111,14 +124,14 @@ export default function DashboardClient() {
     }).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   }, [exams, assignments, projects]);
 
-  const upcomingEvents = useMemo(() => events.filter(e => !e.done).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5), [events]);
-
   const todayItems = useMemo(() => {
     const todayYMD = now.toISOString().split("T")[0].replace(/-/g, "");
     if (parseInt(todayYMD) < 20260223 || parseInt(todayYMD) > 20260626) return [];
     const weekday = now.getDay() === 0 ? 7 : now.getDay(); 
     return schedule.filter(s => s.weekday === weekday && s.semester === "114-2").sort((a, b) => a.start.localeCompare(b.start));
   }, [schedule, now]);
+
+  const upcomingEvents = useMemo(() => events.filter(e => !e.done).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5), [events]);
 
   const toggleEvent = (id: string) => {
     const next = events.map(e => e.id === id ? { ...e, done: !e.done } : e);
@@ -130,24 +143,40 @@ export default function DashboardClient() {
 
   return (
     <div className="page">
-      {/* 手機版側邊欄遮罩 */}
-      {isSidebarOpen && (
-        <div 
-          className="sidebarOverlay" 
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      <style jsx global>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
+        }
+        .marquee-container {
+          overflow: hidden;
+          background: #0f172a;
+          color: #f1f5f9;
+          padding: 12px 0;
+          font-size: 14px;
+          border-bottom: 2px solid #3b82f6;
+          white-space: nowrap;
+          display: flex;
+        }
+        .marquee-content {
+          display: inline-block;
+          animation: marquee 70s linear infinite; /* 速度大幅放慢至 70 秒 */
+          padding-left: 10px;
+        }
+        .kpi-card-inner {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+        }
+      `}</style>
+
+      {isSidebarOpen && <div className="sidebarOverlay" onClick={() => setIsSidebarOpen(false)} />}
 
       <div className="topbar">
         <div className="topbarInner">
           <div className="logoArea">
-            {/* 新增：左上角漢堡按鈕 */}
-            <button 
-              className="menuBtn" 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            >
-              ☰
-            </button>
+            <button className="menuBtn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
             <div style={{ fontSize: 24 }}>🎓</div>
             <h1 className="h1">Student OS</h1>
           </div>
@@ -164,11 +193,22 @@ export default function DashboardClient() {
         </div>
       </div>
 
-      <div className="container dashboardGrid">
-        {/* 左側欄位 - 增加 active 控制顯示 */}
+      {/* 跑馬燈：一進入頁面就會從左側開始跑 */}
+      <div className="marquee-container">
+        <div className="marquee-content">
+          <span style={{ marginRight: "80px" }}>🚀 歡迎回來！本週重要截止事項共 {weeklyEvents.length} 項。</span>
+          <span style={{ marginRight: "80px" }}>📈 {news}</span>
+          <span style={{ marginRight: "80px" }}>📅 今日課表：{todayItems.length > 0 ? todayItems.map(i => i.title).join(", ") : "今日無課"}。</span>
+          {/* 重複一次以確保循環時沒有空白 */}
+          <span style={{ marginRight: "80px" }}>🚀 歡迎回來！本週重要截止事項共 {weeklyEvents.length} 項。</span>
+          <span style={{ marginRight: "80px" }}>📈 {news}</span>
+        </div>
+      </div>
+
+      <div className="container dashboardGrid" style={{ marginTop: "20px" }}>
         <div className={`dashboardSide ${isSidebarOpen ? 'active' : ''}`}>
           <Sidebar />
-          <div className="card externalLinksCard">
+          <div className="card externalLinksCard" style={{ marginTop: "14px" }}>
             <div className="cardHeader"><h3 className="cardTitle">🔗 常用外部連結</h3></div>
             <div className="externalLinks">
               <a href="https://webapp.yuntech.edu.tw/YunTechSSO/Account/Login" target="_blank" className="btn linkBtn">雲科單一入口</a>
@@ -178,7 +218,6 @@ export default function DashboardClient() {
           </div>
         </div>
 
-        {/* 右側主要內容 */}
         <div className="dashboardMain">
           <div className="timeHeroCard">
              <div className="heroDate">{timeInfo.fullDate}</div>
@@ -187,13 +226,22 @@ export default function DashboardClient() {
 
           <div className="kpiGrid">
             <div className="card kpiCard">
-              <div className="cardHeader"><div><div className="small">📊 考試</div><div className="kpi">{exams.length}</div></div></div>
+              <div className="kpi-card-inner">
+                <div className="small" style={{ fontWeight: 800 }}>📊 考試</div>
+                <div className="kpi" style={{ margin: 0, color: '#3b82f6' }}>{exams.length}</div>
+              </div>
             </div>
             <div className="card kpiCard">
-              <div className="cardHeader"><div><div className="small">📝 作業</div><div className="kpi">{assignments.length}</div></div></div>
+              <div className="kpi-card-inner">
+                <div className="small" style={{ fontWeight: 800 }}>📝 作業</div>
+                <div className="kpi" style={{ margin: 0, color: '#3b82f6' }}>{assignments.length}</div>
+              </div>
             </div>
             <div className="card kpiCard">
-              <div className="cardHeader"><div><div className="small">👥 報告</div><div className="kpi">{projects.length}</div></div></div>
+              <div className="kpi-card-inner">
+                <div className="small" style={{ fontWeight: 800 }}>👥 報告</div>
+                <div className="kpi" style={{ margin: 0, color: '#3b82f6' }}>{projects.length}</div>
+              </div>
             </div>
           </div>
 
@@ -284,12 +332,12 @@ export default function DashboardClient() {
             </div>
           </div>
 
-          <div className="card notificationCard">
+          <div className="card notificationCard" style={{ marginTop: "14px" }}>
             <div className="cardHeader"><h2 className="cardTitle">🔔 即將到來的提醒</h2><Link href="/events" className="btn btnSmall">管理</Link></div>
             <div className="eventReminderList">
               {upcomingEvents.length === 0 ? <div className="row">目前無待辦。</div> : 
                 upcomingEvents.map((ev) => (
-                  <div key={ev.id} className="row eventReminderRow" style={{ opacity: ev.done ? 0.6 : 1 }}>
+                  <div key={ev.id} className="row eventReminderRow" style={{ opacity: ev.done ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                     <input type="checkbox" checked={ev.done} onChange={() => toggleEvent(ev.id)} />
                     <div className="eventDetail">
                       <span className="badge" style={{ marginRight: 8 }}>{ev.category}</span>

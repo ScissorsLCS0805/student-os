@@ -39,6 +39,8 @@ export default function ExamsPage() {
   const [course, setCourse] = useState<string>(COURSES[0]);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("09:10"); // 新增：開始時間
+  const [endTime, setEndTime] = useState("12:00");   // 新增：結束時間
   const [progress, setProgress] = useState<number>(0);
   const [note, setNote] = useState("");
 
@@ -47,6 +49,8 @@ export default function ExamsPage() {
   const [eCourse, setECourse] = useState<string>(COURSES[0]);
   const [eTitle, setETitle] = useState("");
   const [eDate, setEDate] = useState("");
+  const [eStartTime, setEStartTime] = useState("09:10"); // 新增：編輯開始時間
+  const [eEndTime, setEEndTime] = useState("12:00");     // 新增：編輯結束時間
   const [eProgress, setEProgress] = useState<number>(0);
   const [eNote, setENote] = useState("");
 
@@ -69,8 +73,9 @@ export default function ExamsPage() {
         course: course,
         title: t,
         date: date.trim() || undefined,
+        // 將時間區間整合進備註或擴充欄位，此處採整合進 note 的方式確保顯示
+        note: `時間：${startTime}-${endTime}${note.trim() ? " | " + note.trim() : ""}`,
         progress: clampProgress(Number(progress)),
-        note: note.trim() || undefined,
       },
       ...items,
     ];
@@ -78,6 +83,8 @@ export default function ExamsPage() {
     persist(next);
     setTitle("");
     setDate("");
+    setStartTime("09:10");
+    setEndTime("12:00");
     setProgress(0);
     setNote("");
   }
@@ -92,8 +99,20 @@ export default function ExamsPage() {
     setECourse(x.course || COURSES[0]);
     setETitle(x.title);
     setEDate(x.date || "");
+    
+    // 解析原本存放在 note 中的時間資訊 (如有)
+    const timeMatch = x.note?.match(/時間：(\d{2}:\d{2})-(\d{2}:\d{2})/);
+    if (timeMatch) {
+        setEStartTime(timeMatch[1]);
+        setEEndTime(timeMatch[2]);
+        setENote(x.note?.split(" | ")[1] || "");
+    } else {
+        setEStartTime("09:10");
+        setEEndTime("12:00");
+        setENote(x.note || "");
+    }
+    
     setEProgress(x.progress || 0);
-    setENote(x.note || "");
   }
 
   function cancelEdit() {
@@ -114,7 +133,7 @@ export default function ExamsPage() {
               title: t,
               date: eDate.trim() || undefined,
               progress: clampProgress(Number(eProgress)),
-              note: eNote.trim() || undefined,
+              note: `時間：${eStartTime}-${eEndTime}${eNote.trim() ? " | " + eNote.trim() : ""}`,
             }
           : x
       )
@@ -160,8 +179,17 @@ export default function ExamsPage() {
               </div>
 
               <div className="field">
-                <div className="label">考試日期（可空）</div>
+                <div className="label">考試日期</div>
                 <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              </div>
+
+              <div className="field">
+                <div className="label">考試時間區間</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input className="input" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  <span>至</span>
+                  <input className="input" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                </div>
               </div>
 
               <div className="field">
@@ -170,8 +198,8 @@ export default function ExamsPage() {
               </div>
 
               <div className="field" style={{ gridColumn: "1 / -1" }}>
-                <div className="label">備註（可空）</div>
-                <input className="input" placeholder="例如：範圍第 1-4 章，重點 CAPM" value={note} onChange={(e) => setNote(e.target.value)} />
+                <div className="label">其他備註（可空）</div>
+                <input className="input" placeholder="例如：範圍第 1-4 章" value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
             </div>
 
@@ -208,7 +236,7 @@ export default function ExamsPage() {
                                 {x.course ? `【${x.course}】` : ""} {x.title}
                               </div>
                               <div className="small">
-                                {x.date ? `日期：${x.date}` : "日期：未填"} {x.note ? `｜備註：${x.note}` : ""}
+                                {x.date ? `日期：${x.date}` : "日期：未填"} {x.note ? `｜${x.note}` : ""}
                               </div>
                             </div>
 
@@ -245,12 +273,21 @@ export default function ExamsPage() {
                             </div>
 
                             <div className="field">
+                              <div className="label">考試時間區間</div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <input className="input" type="time" value={eStartTime} onChange={(e) => setEStartTime(e.target.value)} />
+                                <span>至</span>
+                                <input className="input" type="time" value={eEndTime} onChange={(e) => setEEndTime(e.target.value)} />
+                              </div>
+                            </div>
+
+                            <div className="field">
                               <div className="label">進度</div>
                               <input className="input" type="number" min={0} max={100} value={eProgress} onChange={(e) => setEProgress(Number(e.target.value))} />
                             </div>
 
                             <div className="field" style={{ gridColumn: "1 / -1" }}>
-                              <div className="label">備註</div>
+                              <div className="label">其他備註</div>
                               <input className="input" value={eNote} onChange={(e) => setENote(e.target.value)} />
                             </div>
                           </div>
