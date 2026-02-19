@@ -24,10 +24,10 @@ const SEM_END_STR = "2026-06-26";
 function ProgressRow({ label, progress }: { label: string; progress: number }) {
   const p = Math.max(0, Math.min(100, Number(progress) || 0));
   return (
-    <div style={{ display: "grid", gap: 6 }}>
+    <div style={{ display: "grid", gap: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ fontWeight: 800 }}>{label}</div>
-        <div className="muted">{p}%</div>
+        <div style={{ fontSize: "12px", fontWeight: 600 }}>{label}</div>
+        <div className="muted" style={{ fontSize: "12px" }}>{p}%</div>
       </div>
       <div className="progressWrap" style={{ height: "6px" }}>
         <div className="progressBar" style={{ width: `${p}%` }} />
@@ -56,12 +56,13 @@ export default function DashboardClient() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [now, setNow] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // 新增：解決 Hydration Error 的掛載檢查
   const [mounted, setMounted] = useState(false);
+  
+  // 新增：控制側邊欄收合狀態
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    setMounted(true); // 組件掛載後才渲染動態內容
+    setMounted(true);
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -92,9 +93,11 @@ export default function DashboardClient() {
   }, [now]);
 
   const q = searchQuery.toLowerCase();
-  const topExams = useMemo(() => exams.filter(e => e.title.toLowerCase().includes(q)).sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999")).slice(0, 3), [exams, q]);
-  const topAssignments = useMemo(() => assignments.filter(a => a.title.toLowerCase().includes(q)).sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999")).slice(0, 3), [assignments, q]);
-  const topProjects = useMemo(() => projects.filter(p => p.title.toLowerCase().includes(q)).sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999")).slice(0, 3), [projects, q]);
+  const filterFn = (item: any) => item.title.toLowerCase().includes(q) || (item.course && item.course.toLowerCase().includes(q));
+  
+  const topExams = useMemo(() => exams.filter(filterFn).sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999")).slice(0, 3), [exams, q]);
+  const topAssignments = useMemo(() => assignments.filter(filterFn).sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999")).slice(0, 3), [assignments, q]);
+  const topProjects = useMemo(() => projects.filter(filterFn).sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999")).slice(0, 3), [projects, q]);
 
   const weeklyEvents = useMemo(() => {
     const all = [
@@ -123,154 +126,179 @@ export default function DashboardClient() {
     saveJSON(KEYS.events, next);
   };
 
-  // 尚未掛載前回傳空內容，防止伺服器/客戶端時間衝突
   if (!mounted) return null;
 
   return (
     <div className="page">
-      <div className="topbar" style={{ position: "sticky", top: 0, zIndex: 100, borderBottom: "1px solid #e2e8f0" }}>
+      {/* 手機版側邊欄遮罩 */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebarOverlay" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      <div className="topbar">
         <div className="topbarInner">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="logoArea">
+            {/* 新增：左上角漢堡按鈕 */}
+            <button 
+              className="menuBtn" 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              ☰
+            </button>
             <div style={{ fontSize: 24 }}>🎓</div>
             <h1 className="h1">Student OS</h1>
           </div>
-          <div style={{ marginLeft: "40px", flex: 1, maxWidth: "400px" }}>
-            <input className="input" placeholder="🔍 搜尋任務、考試或作業..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ borderRadius: "20px", padding: "8px 16px", background: "#f1f5f9", border: "none" }} />
+          <div className="searchArea">
+            <input className="input searchInput" placeholder="🔍 搜尋任務或課程..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "14px", fontWeight: 700 }}>{timeInfo.fullDate}</div>
-              <div style={{ fontSize: "12px" }} className="muted">{timeInfo.time}</div>
+          <div className="userArea">
+            <div className="timeDisplay">
+              <div className="timeFullDate">{timeInfo.fullDate}</div>
+              <div className="timeClock muted">{timeInfo.time}</div>
             </div>
-            <button className="btn btnDanger" onClick={handleLogout} style={{ padding: "6px 14px", borderRadius: "8px" }}>登出</button>
+            <button className="btn btnDanger btnLogout" onClick={handleLogout}>登出</button>
           </div>
         </div>
       </div>
 
-      <div className="container" style={{ paddingTop: "20px" }}>
-        <div className="grid" style={{ gridTemplateColumns: "1fr", alignItems: "start" }}>
-          <div className="grid" style={{ gridTemplateColumns: "1fr", gap: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 14 }}>
-              <div style={{ position: "sticky", top: 100, height: "fit-content" }}>
-                <Sidebar />
-                <div className="card" style={{ marginTop: 14 }}>
-                  <div className="cardHeader"><h3 className="cardTitle">🔗 常用外部連結</h3></div>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <a href="https://webapp.yuntech.edu.tw/YunTechSSO/Account/Login" target="_blank" className="btn" style={{ textAlign: "left", fontSize: "13px" }}>雲科單一入口服務網</a>
-                    <a href="https://webapp.yuntech.edu.tw/YunTechSSO/Forward/RedirectByType?Type=outlook" target="_blank" className="btn" style={{ textAlign: "left", fontSize: "13px" }}>Outlook 信箱</a>
-                    <a href="https://umf.yuntech.edu.tw/" target="_blank" className="btn" style={{ textAlign: "left", fontSize: "13px" }}>雲科財金系網</a>
+      <div className="container dashboardGrid">
+        {/* 左側欄位 - 增加 active 控制顯示 */}
+        <div className={`dashboardSide ${isSidebarOpen ? 'active' : ''}`}>
+          <Sidebar />
+          <div className="card externalLinksCard">
+            <div className="cardHeader"><h3 className="cardTitle">🔗 常用外部連結</h3></div>
+            <div className="externalLinks">
+              <a href="https://webapp.yuntech.edu.tw/YunTechSSO/Account/Login" target="_blank" className="btn linkBtn">雲科單一入口</a>
+              <a href="https://webapp.yuntech.edu.tw/YunTechSSO/Forward/RedirectByType?Type=outlook" target="_blank" className="btn linkBtn">Outlook 信箱</a>
+              <a href="https://umf.yuntech.edu.tw/" target="_blank" className="btn linkBtn">雲科財金系網</a>
+            </div>
+          </div>
+        </div>
+
+        {/* 右側主要內容 */}
+        <div className="dashboardMain">
+          <div className="timeHeroCard">
+             <div className="heroDate">{timeInfo.fullDate}</div>
+             <div className="heroTime">{timeInfo.time}</div>
+          </div>
+
+          <div className="kpiGrid">
+            <div className="card kpiCard">
+              <div className="cardHeader"><div><div className="small">📊 考試</div><div className="kpi">{exams.length}</div></div></div>
+            </div>
+            <div className="card kpiCard">
+              <div className="cardHeader"><div><div className="small">📝 作業</div><div className="kpi">{assignments.length}</div></div></div>
+            </div>
+            <div className="card kpiCard">
+              <div className="cardHeader"><div><div className="small">👥 報告</div><div className="kpi">{projects.length}</div></div></div>
+            </div>
+          </div>
+
+          <div className="card importantCard">
+            <div className="cardHeader"><h2 className="cardTitle">🚩 本週重要截止</h2><Link href="/calendar" className="small">月曆 →</Link></div>
+            {weeklyEvents.length === 0 ? <div className="muted">本週暫無重要事項。</div> : 
+              <div className="eventList">
+                {weeklyEvents.map((ev, i) => (
+                  <div key={i} className="row eventRow">
+                    <span><span className="badge">{ev.type}</span><b>{ev.title}</b> <span className="courseTag">{ev.courseDisplay ? `【${ev.courseDisplay}】` : "【通用】"}</span></span>
+                    <span className="badge badgeDanger">{ev.date} (剩 {daysUntil(ev.date)} 天)</span>
                   </div>
-                </div>
+                ))}
               </div>
+            }
+          </div>
 
-              <div className="grid" style={{ gridTemplateColumns: "1fr", gap: 14 }}>
-                <div className="card" style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", color: "#fff", textAlign: "center", padding: "32px 0", borderRadius: "16px" }}>
-                   <div style={{ fontSize: "18px", opacity: 0.8, marginBottom: 8 }}>{timeInfo.fullDate}</div>
-                   <div style={{ fontSize: "42px", fontWeight: 900, letterSpacing: "1px" }}>{timeInfo.time}</div>
-                </div>
-
-                <div className="grid grid3">
-                  <div className="card">
-                    <div className="cardHeader"><div><div className="small">📊 考試</div><div className="kpi">{exams.length}</div></div><span className="badge">自動同步</span></div>
-                  </div>
-                  <div className="card">
-                    <div className="cardHeader"><div><div className="small">📝 作業</div><div className="kpi">{assignments.length}</div></div><span className="badge">自動同步</span></div>
-                  </div>
-                  <div className="card">
-                    <div className="cardHeader"><div><div className="small">👥 報告</div><div className="kpi">{projects.length}</div></div><span className="badge">自動同步</span></div>
-                  </div>
-                </div>
-
-                <div className="card" style={{ borderLeft: "4px solid #ef4444" }}>
-                  <div className="cardHeader"><h2 className="cardTitle">🚩 本週重要截止 (7天內)</h2><Link href="/calendar" className="small">完整月曆 →</Link></div>
-                  {weeklyEvents.length === 0 ? <div className="muted">本週暫無重要事項。</div> : 
-                    <div style={{ display: "grid", gap: 10 }}>
-                      {weeklyEvents.map((ev, i) => (
-                        <div key={i} className="row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span><span className="badge" style={{ marginRight: 8 }}>{ev.type}</span><b>{ev.title}</b> <span className="small muted">({(ev as any).courseDisplay || "通用"})</span></span>
-                          <span className="badge badgeDanger">{ev.date} (剩 {daysUntil(ev.date)} 天)</span>
-                        </div>
-                      ))}
+          <div className="taskGrid">
+            <div className="card">
+              <div className="cardHeader"><h2 className="cardTitle">📊 未來考試</h2><Link className="btn btnSmall" href="/exams">更多</Link></div>
+              {topExams.length === 0 ? <EmptyHint text="尚未新增考試" href="/exams" /> : 
+                <div className="taskSubList">
+                  {topExams.map((e) => (
+                    <div key={e.id} className="row taskRow">
+                      <div className="taskInfo">
+                        <div className="taskTitle"><b>{e.title}</b></div>
+                        <div className="courseTagSmall">{e.course ? `【${e.course}】` : "【通用】"}</div>
+                        <div className="taskDate badge">{e.date}</div>
+                      </div>
+                      <ProgressRow label="複習進度" progress={e.progress} />
                     </div>
-                  }
+                  ))}
                 </div>
+              }
+            </div>
 
-                <div className="grid grid2">
-                  <div className="card">
-                    <div className="cardHeader"><h2 className="cardTitle">📊 未來考試</h2><Link className="btn" href="/exams">打開 →</Link></div>
-                    {topExams.length === 0 ? <EmptyHint text="尚未新增考試" href="/exams" /> : 
-                      <div style={{ display: "grid", gap: 12 }}>
-                        {topExams.map((e) => (
-                          <div key={e.id} className="row">
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}><div><b>{e.title}</b> <div className="small muted">{e.course || "通用"}</div></div><span className="badge">{e.date}</span></div>
-                            <ProgressRow label="複習進度" progress={e.progress} />
-                          </div>
-                        ))}
+            <div className="card">
+              <div className="cardHeader"><h2 className="cardTitle">📝 待交作業</h2><Link className="btn btnSmall" href="/assignments">更多</Link></div>
+              {topAssignments.length === 0 ? <EmptyHint text="尚未新增作業" href="/assignments" /> : 
+                <div className="taskSubList">
+                  {topAssignments.map((a) => (
+                    <div key={a.id} className="row taskRow">
+                      <div className="taskInfo">
+                        <div className="taskTitle"><b>{a.title}</b></div>
+                        <div className="courseTagSmall">{a.course ? `【${a.course}】` : "【通用】"}</div>
+                        <div className="taskDate badge">{a.due}</div>
                       </div>
-                    }
-                  </div>
-
-                  <div className="card">
-                    <div className="cardHeader"><h2 className="cardTitle">📝 作業</h2><Link className="btn" href="/assignments">打開 →</Link></div>
-                    {topAssignments.length === 0 ? <EmptyHint text="尚未新增作業" href="/assignments" /> : 
-                      <div style={{ display: "grid", gap: 12 }}>
-                        {topAssignments.map((a) => (
-                          <div key={a.id} className="row">
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}><div><b>{a.title}</b> <div className="small muted">{a.course || "通用"}</div></div><span className="badge">{a.due}</span></div>
-                            <ProgressRow label="完成進度" progress={a.progress} />
-                          </div>
-                        ))}
-                      </div>
-                    }
-                  </div>
-
-                  <div className="card">
-                    <div className="cardHeader"><h2 className="cardTitle">👥 團體報告</h2><Link className="btn" href="/projects">打開 →</Link></div>
-                    {topProjects.length === 0 ? <EmptyHint text="尚未新增報告" href="/projects" /> : 
-                      <div style={{ display: "grid", gap: 12 }}>
-                        {topProjects.map((p) => (
-                          <div key={p.id} className="row">
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}><div><b>{p.title}</b> <div className="small muted">{p.course || "通用"}</div></div><span className="badge">{p.due}</span></div>
-                            <ProgressRow label="進度" progress={p.progress} />
-                          </div>
-                        ))}
-                      </div>
-                    }
-                  </div>
-
-                  <div className="card">
-                    <div className="cardHeader"><h2 className="cardTitle">📅 今日課表</h2><Link className="btn" href="/schedule">打開 →</Link></div>
-                    {todayItems.length === 0 ? <div className="row">今天沒有課 / 工讀</div> : 
-                      <div style={{ display: "grid", gap: 10 }}>
-                        {todayItems.map((s) => (
-                          <div key={s.id} className="row" style={{ display: "flex", justifyContent: "space-between" }}>
-                            <div><b>{s.start}–{s.end} {s.title}</b><div className="small">{s.location}</div></div>
-                            <span className="badge badgeOk">今日</span>
-                          </div>
-                        ))}
-                      </div>
-                    }
-                  </div>
+                      <ProgressRow label="完成進度" progress={a.progress} />
+                    </div>
+                  ))}
                 </div>
+              }
+            </div>
 
-                <div className="card">
-                  <div className="cardHeader"><h2 className="cardTitle">🔔 即將到來的提醒與事件</h2><Link href="/events" className="btn">管理事件 →</Link></div>
-                  <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
-                    {upcomingEvents.length === 0 ? <div className="row">目前沒有待辦事件。</div> : 
-                      upcomingEvents.map((ev) => (
-                        <div key={ev.id} className="row" style={{ display: "flex", alignItems: "center", gap: 12, opacity: ev.done ? 0.6 : 1 }}>
-                          <input type="checkbox" checked={ev.done} onChange={() => toggleEvent(ev.id)} />
-                          <div style={{ flex: 1 }}>
-                            <span className="badge" style={{ marginRight: 8 }}>{ev.category}</span>
-                            <b style={{ textDecoration: ev.done ? "line-through" : "none" }}>{ev.title}</b>
-                            <div className="small muted">{ev.date} {ev.time || ""}</div>
-                          </div>
-                        </div>
-                      ))
-                    }
-                  </div>
+            <div className="card">
+              <div className="cardHeader"><h2 className="cardTitle">👥 團體報告</h2><Link className="btn btnSmall" href="/projects">更多</Link></div>
+              {topProjects.length === 0 ? <EmptyHint text="尚未新增報告" href="/projects" /> : 
+                <div className="taskSubList">
+                  {topProjects.map((p) => (
+                    <div key={p.id} className="row taskRow">
+                      <div className="taskInfo">
+                        <div className="taskTitle"><b>{p.title}</b></div>
+                        <div className="courseTagSmall">{p.course ? `【${p.course}】` : "【通用】"}</div>
+                        <div className="taskDate badge">{p.due}</div>
+                      </div>
+                      <ProgressRow label="進度" progress={p.progress} />
+                    </div>
+                  ))}
                 </div>
-              </div>
+              }
+            </div>
+
+            <div className="card">
+              <div className="cardHeader"><h2 className="cardTitle">📅 今日課表</h2><Link className="btn btnSmall" href="/schedule">完整</Link></div>
+              {todayItems.length === 0 ? <div className="row">今日無課。</div> : 
+                <div className="taskSubList">
+                  {todayItems.map((s) => (
+                    <div key={s.id} className="row scheduleRow">
+                      <div className="scheduleInfo">
+                        <b>{s.start}–{s.end} {s.title}</b>
+                        <div className="small muted">{s.location}</div>
+                      </div>
+                      <span className="badge badgeOk">今日</span>
+                    </div>
+                  ))}
+                </div>
+              }
+            </div>
+          </div>
+
+          <div className="card notificationCard">
+            <div className="cardHeader"><h2 className="cardTitle">🔔 即將到來的提醒</h2><Link href="/events" className="btn btnSmall">管理</Link></div>
+            <div className="eventReminderList">
+              {upcomingEvents.length === 0 ? <div className="row">目前無待辦。</div> : 
+                upcomingEvents.map((ev) => (
+                  <div key={ev.id} className="row eventReminderRow" style={{ opacity: ev.done ? 0.6 : 1 }}>
+                    <input type="checkbox" checked={ev.done} onChange={() => toggleEvent(ev.id)} />
+                    <div className="eventDetail">
+                      <span className="badge" style={{ marginRight: 8 }}>{ev.category}</span>
+                      <b style={{ textDecoration: ev.done ? "line-through" : "none" }}>{ev.title}</b>
+                      <div className="small muted">{ev.date} {ev.time || ""}</div>
+                    </div>
+                  </div>
+                ))
+              }
             </div>
           </div>
         </div>
